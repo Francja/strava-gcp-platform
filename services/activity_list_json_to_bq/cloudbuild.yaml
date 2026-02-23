@@ -1,0 +1,42 @@
+# services/activity_list_json_to_bq/cloudbuild.yaml
+substitutions:
+  _REGION: 'europe-central2'
+  _REPO: 'run'
+  _SERVICE: 'activity-json-to-bq'
+
+steps:
+  # Build
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
+      - '.'
+    dir: 'services/activity_list_json_to_bq'
+
+  # Push
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
+
+  # Deploy (PRYWATNY — bez allow-unauthenticated)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '$_SERVICE'
+      - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
+      - '--region=$_REGION'
+      - '--platform=managed'
+      # ENV z nazwami bucket/prefixów
+      - '--set-env-vars=DATA_BUCKET=$(DATA_BUCKET)'
+      - '--set-env-vars=SRC_PREFIX=$(SRC_PREFIX)'
+      - '--set-env-vars=DST_PREFIX=$(DST_PREFIX)'
+
+images:
+  - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
+  
+options:
+  logging: CLOUD_LOGGING_ONLY
