@@ -1,5 +1,0 @@
-fastapi
-uvicorn[standard]
-requests
-google-cloud-pubsub
-google-cloud-firestore

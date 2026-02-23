@@ -1,28 +1,23 @@
-# dev_tools/bootstrap_auth_service/cloudbuild.yaml
 substitutions:
   _REGION: 'europe-central2'
   _REPO: 'run'
-  _SERVICE: 'bootstrap-auth'
+  _SERVICE: 'list-fetcher'
 
 steps:
-  # Build
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
       - '-t'
       - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
       - '.'
-    dir: 'dev_tools/bootstrap_auth_service'
+    dir: 'services/list_fetcher_service'
 
-  # Push
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
       - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
 
-  # Deploy
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'Deploy'
     entrypoint: gcloud
     args:
       - 'run'
@@ -31,24 +26,10 @@ steps:
       - '--image=$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
       - '--region=$_REGION'
       - '--platform=managed'
-      - '--allow-unauthenticated'
+      - '--no-allow-unauthenticated'
       - '--service-account=cloudrun-sa@$PROJECT_ID.iam.gserviceaccount.com'
-      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,REDIRECT_URI=https://bootstrap-auth-355793906950.europe-central2.run.app/callback'
+      - '--set-env-vars=GCP_PROJECT_ID=$PROJECT_ID,GCS_BUCKET=YOUR_BUCKET_NAME'
       - '--update-secrets=STRAVA_CLIENT_ID=STRAVA_CLIENT_ID:latest,STRAVA_CLIENT_SECRET=STRAVA_CLIENT_SECRET:latest'
-
-
-  # Public access "fix" 
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'PublicAccess'
-    entrypoint: gcloud
-    args:
-      - 'run'
-      - 'services'
-      - 'add-iam-policy-binding'
-      - '$_SERVICE'
-      - '--region=$_REGION'
-      - '--member=allUsers'
-      - '--role=roles/run.invoker'
 
 images:
   - '$_REGION-docker.pkg.dev/$PROJECT_ID/$_REPO/$_SERVICE:$SHORT_SHA'
