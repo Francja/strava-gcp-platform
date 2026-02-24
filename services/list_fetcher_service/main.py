@@ -2,6 +2,7 @@ import os
 import json
 import time
 import base64
+from urllib import response
 import requests
 from fastapi import FastAPI, Request
 from google.cloud import firestore, pubsub_v1, storage
@@ -69,6 +70,20 @@ async def handle_pubsub(request: Request):
             headers={"Authorization": f"Bearer {access_token}"},
             params={"per_page": per_page, "page": page},
         )
+        
+        if response.status_code == 429:
+            raise Exception("Rate limited by Strava")
+
+        if not response.ok:
+            raise Exception(f"Strava API error: {response.status_code} {response.text}")
+
+        activities = response.json()
+
+        if not isinstance(activities, list):
+            raise Exception(f"Unexpected response from Strava: {activities}")
+
+        if not activities:
+            break
 
         activities = response.json()
         if not activities:
