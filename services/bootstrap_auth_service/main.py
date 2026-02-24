@@ -4,6 +4,8 @@ import requests
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from google.cloud import firestore, pubsub_v1
+import logging
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -59,9 +61,18 @@ def callback(code: str):
         "expires_at": expires_at,
     })
 
-    # 3. Publish "start sync" message to Pub/Sub
-    topic_path = publisher.topic_path(PROJECT_ID, "strava-start-sync")
-    message = json.dumps({"athlete_id": athlete_id}).encode("utf-8")
-    publisher.publish(topic_path, message)
+    # Publish do Pub/Sub
+    try:
+        topic_path = publisher.topic_path(PROJECT_ID, "strava-start-sync")
+        message = json.dumps({"athlete_id": athlete_id}).encode("utf-8")
+        future = publisher.publish(topic_path, message)
+        message_id = future.result()  # waiting for confirmation
+        logger.info(f"Published message {message_id} for athlete {athlete_id}")
+    except Exception as e:
+        logger.error(f"Failed to publish: {e}")
+        return {"error": f"Publish failed: {e}"}
+
+    return {"status": f"Authenticated! Sync started for athlete {athlete_id}"}
+
 
     return {"status": f"Authenticated! Sync started for athlete {athlete_id}"}
